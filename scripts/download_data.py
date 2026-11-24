@@ -20,7 +20,9 @@ FILES = [
 REPO_ID = "torchmil/Camelyon16_MIL"
 BASE_URL = "https://huggingface.co/datasets/torchmil/Camelyon16_MIL/resolve/main/"
 RANGE_SIZE = 4 * 1024 * 1024
-RANGE_RETRIES = 5
+# A transient proxy reset must pause the job, not discard the partial download.
+# Zero means retry indefinitely until the range succeeds.
+RANGE_RETRIES = 0
 
 
 def download_resumable(filename: str, target: Path) -> Path:
@@ -44,7 +46,9 @@ def download_resumable(filename: str, target: Path) -> Path:
     with partial.open("ab" if existing else "wb") as handle:
         while total is None or written < total:
             end = written + RANGE_SIZE - 1
-            for attempt in range(1, RANGE_RETRIES + 1):
+            attempt = 0
+            while True:
+                attempt += 1
                 response = None
                 try:
                     response = requests.get(
@@ -96,14 +100,14 @@ def download_resumable(filename: str, target: Path) -> Path:
                     )
                     break
                 except (requests.RequestException, RuntimeError, ValueError) as exc:
-                    if attempt == RANGE_RETRIES:
+                    if RANGE_RETRIES and attempt >= RANGE_RETRIES:
                         raise
                     print(
-                        f"range_retry={attempt}/{RANGE_RETRIES} "
+                        f"range_retry={attempt}/unlimited "
                         f"offset={written} error={exc}",
                         flush=True,
                     )
-                    time.sleep(min(30, attempt * 5))
+                    time.sleep(min(60, attempt * 5))
                 finally:
                     if response is not None:
                         response.close()
