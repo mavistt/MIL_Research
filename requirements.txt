@@ -1,0 +1,18 @@
+# The HPC venv is pinned to the verified GPU build torch 2.3.0+cu121.
+torch==2.3.0
+torchvision==0.18.0
+torchmil==1.0.2
+tensordict==0.4.0
+einops>=0.8,<1
+pyvers>=0.2,<0.3
+huggingface_hub>=0.27,<2
+numpy>=1.25,<3
+pandas>=1.5,<3
+scikit-learn>=1.3,<2
+torchmetrics>=1.4,<2
+matplotlib>=3.7,<4
+seaborn>=0.13,<1
+pyyaml>=6.0,<7
+tqdm>=4.66,<5
+pytest>=8,<10
+

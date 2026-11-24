@@ -1,0 +1,14 @@
+dataset:
+  name: camelyon16
+  root: data/camelyon16
+  downloads: data/downloads/camelyon16_hf
+  feature_name: UNI
+  patch_size: 512
+  input_dim: 1024
+  required_fields: [X, Y, coords, y_inst]
+  training_fields: [X, Y]
+  official_split_file: splits.csv
+split:
+  seed: 1234
+  validation_fraction: 0.2
+

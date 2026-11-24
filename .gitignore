@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.hf_cache/
+.hf_home/
+.pip_cache/
+/data/downloads/
+/data/camelyon16/
+/outputs/
+/experiments/
+reports/environment_*.txt
+logs/
+*.part
+*.log
+
