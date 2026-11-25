@@ -39,6 +39,16 @@ def _loss_and_logits(model, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor
     return logits, loss, {"bag_loss": loss}
 
 
+def _validation_loss_and_logits(model, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor):
+    compute_validation_loss = getattr(model, "compute_validation_loss", None)
+    if compute_validation_loss is not None:
+        logits, loss, details = compute_validation_loss(y=y, x=x, mask=mask)
+        return logits.reshape(-1), loss.reshape(()), details
+    logits = _forward_logits(model, x, mask)
+    loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, y.float())
+    return logits, loss, {"bag_loss": loss}
+
+
 def run_epoch(model, loader, optimizer, device, training: bool):
     model.train(training)
     losses, ys, ps, names = [], [], [], []
@@ -47,7 +57,8 @@ def run_epoch(model, loader, optimizer, device, training: bool):
         mask = batch["mask"].to(device)
         y = batch["Y"].float().to(device)
         with torch.set_grad_enabled(training):
-            logits, loss, _ = _loss_and_logits(model, y, x, mask)
+            loss_fn = _loss_and_logits if training else _validation_loss_and_logits
+            logits, loss, _ = loss_fn(model, y, x, mask)
             if training:
                 optimizer.zero_grad(set_to_none=True)
                 loss.backward()
@@ -143,7 +154,7 @@ def main() -> None:
         loaders[partition] = DataLoader(
             dataset,
             batch_size=int(training_cfg.get("batch_size", 1)),
-            shuffle=partition == "train",
+            shuffle=partition == "train" and bool(training_cfg.get("data_shuffle", True)),
             collate_fn=collate_bags,
             num_workers=int(training_cfg.get("num_workers", 0)),
         )
@@ -161,7 +172,7 @@ def main() -> None:
         val_metrics = compute_metrics(val_y, val_p)
         score, lower_is_better = selection_score(val_loss, val_metrics, metric_name)
         improved = score > best
-        history.append({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss, "val_auroc": val_metrics["auroc"], "val_auprc": val_metrics["auprc"], "selection_score": score})
+        history.append({"epoch": epoch, "train_loss": train_loss, "val_bag_loss": val_loss, "val_loss": val_loss, "val_auroc": val_metrics["auroc"], "val_auprc": val_metrics["auprc"], "selection_score": score})
         print(history[-1], flush=True)
         if improved:
             best = score
@@ -175,7 +186,7 @@ def main() -> None:
         if scheduler is not None:
             scheduler.step()
     pd.DataFrame(history).to_csv(output / "training_history.csv", index=False)
-    (output / "run_metadata.json").write_text(json.dumps({"device": str(device), "best_epoch": best_epoch, "selection_metric": metric_name, "official_loss_selection": lower_is_better}, indent=2), encoding="utf-8")
+    (output / "run_metadata.json").write_text(json.dumps({"device": str(device), "best_epoch": best_epoch, "checkpoint_selection_metric": metric_name, "selection_direction": "minimize" if lower_is_better else "maximize", "training_loss_definition": "model-specific official training objective", "validation_loss_definition": "model-specific bag-level validation loss", "data_shuffle": bool(training_cfg.get("data_shuffle", True)), "fp16": bool(training_cfg.get("fp16", False)), "gradient_accumulation_steps": int(training_cfg.get("gradient_accumulation_steps", 1)), "protocol_note": "Project-level validation/checkpoint protocol is configured independently from author-specific training loops."}, indent=2), encoding="utf-8")
     checkpoint = torch.load(output / "checkpoint_best.pt", map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model"])
     for partition in ("val", "test"):

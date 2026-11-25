@@ -11,10 +11,13 @@ training:
   optimizer: lookahead_radam
   lookahead_alpha: 0.5
   lookahead_k: 6
+  data_shuffle: false
+  fp16: false
+  gradient_accumulation_steps: 1
   early_stopping: true
   early_stopping_patience: 10
   early_stopping_min_epoch: 1
-  selection_metric: val_loss
+  selection_metric: val_auroc
   num_workers: 0
   device: auto
 reproducibility:

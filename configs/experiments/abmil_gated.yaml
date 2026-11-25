@@ -10,7 +10,7 @@ training:
   weight_decay: 0.0
   optimizer: adam
   early_stopping_patience: 8
-  selection_metric: auroc
+  selection_metric: val_auroc
   num_workers: 0
   device: auto
 reproducibility:

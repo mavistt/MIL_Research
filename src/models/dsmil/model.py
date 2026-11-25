@@ -8,6 +8,14 @@ from ..common import unpad_single_bag
 from .official_dsmil import BClassifier, FCLayer, MILNet
 
 
+def apply_sparse_init(module: nn.Module) -> None:
+    """Match DSMIL train_tcga.py initialization for trainable affine layers."""
+    if isinstance(module, (nn.Linear, nn.Conv1d, nn.Conv2d)):
+        nn.init.orthogonal_(module.weight)
+        if module.bias is not None:
+            nn.init.constant_(module.bias, 0)
+
+
 class OfficialDSMIL(nn.Module):
     """Official DSMIL FCLayer/BClassifier/MILNet adapter for WSI bags."""
 
@@ -32,6 +40,7 @@ class OfficialDSMIL(nn.Module):
                 passing_v=passing_v,
             ),
         )
+        self.model.apply(apply_sparse_init)
 
     def _official_forward(self, x: torch.Tensor, mask: torch.Tensor):
         return self.model(unpad_single_bag(x, mask))
@@ -49,6 +58,11 @@ class OfficialDSMIL(nn.Module):
         max_loss = F.binary_cross_entropy_with_logits(max_instance_logits, target)
         total = 0.5 * bag_loss + 0.5 * max_loss
         return bag_logits, total, {"bag_loss": bag_loss, "max_loss": max_loss, "total_loss": total}
+
+    def compute_validation_loss(self, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor):
+        bag_logits = self(x, mask)
+        bag_loss = F.binary_cross_entropy_with_logits(bag_logits, y.reshape(-1).float())
+        return bag_logits, bag_loss, {"bag_loss": bag_loss}
 
     def compute_loss(self, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor):
         logits, total, details = self.compute_training_loss(y, x, mask)

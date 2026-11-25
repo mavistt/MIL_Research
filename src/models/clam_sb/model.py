@@ -60,6 +60,11 @@ class OfficialCLAMSB(nn.Module):
             "total_loss": total,
         }
 
+    def compute_validation_loss(self, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor):
+        logits, _, _, _, _ = self._official_forward(x, mask, instance_eval=False)
+        bag_loss = F.cross_entropy(logits, y.reshape(-1).long())
+        return two_class_positive_logit(logits), bag_loss, {"bag_loss": bag_loss}
+
     def compute_loss(self, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor):
         logits, total, details = self.compute_training_loss(y, x, mask)
         return logits, {"total_loss": total, **{k: v for k, v in details.items() if k != "total_loss"}}

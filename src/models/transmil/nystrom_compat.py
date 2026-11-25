@@ -84,7 +84,8 @@ class NystromAttention(nn.Module):
             out = out + self.res_conv(v)
         out = rearrange(out, "b h n d -> b n (h d)", h=h)
         out = self.to_out(out)
-        out = out[:, :n]
+        # n instances were padded at the front; recover the original tail.
+        out = out[:, -n:]
         if return_attn:
             return out, attn1 @ attn2_inv @ attn3
         return out

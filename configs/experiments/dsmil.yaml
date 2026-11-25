@@ -16,7 +16,7 @@ training:
   scheduler_eta_min: 0.000005
   early_stopping: true
   early_stopping_patience: 10
-  selection_metric: val_loss
+  selection_metric: val_auroc
   num_workers: 0
   device: auto
 reproducibility:

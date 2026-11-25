@@ -24,3 +24,8 @@ class MeanPoolingMIL(nn.Module):
     def compute_training_loss(self, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor):
         logits, losses = self.compute_loss(y, x, mask)
         return logits, losses["bag_loss"], losses
+
+    def compute_validation_loss(self, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor):
+        logits = self(x, mask)
+        bag_loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, y.float())
+        return logits, bag_loss, {"bag_loss": bag_loss}

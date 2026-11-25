@@ -1,61 +1,72 @@
-# 官方 baseline 实现审计
+# 官方 baseline 第二轮实现审计
 
-## 结论
+## 审计结论
 
-本仓库的目标是做“严格 baseline”，因此正式 baseline 不再把 TorchMIL 的同名模型当作作者官方代码。当前分层如下：
+本轮只做代码修正和验证，不启动新的 CLAM、DSMIL、TransMIL 多 seed 正式训练。上一轮遗留的 CLAM seed 0 旧代码训练已停止；其部分 checkpoint 不作为本轮结果使用。
 
-- ABMIL / Gated ABMIL：继续使用 TorchMIL 1.0.2 的标准 ABMIL 适配器。它与 AttentionDeepMIL 的 attention 结构一致，但不是作者的 WSI 训练仓库；之前已经完成的结果保留，不因这次审计重跑。
-- Mean Pooling：项目自有的简单聚合对照，不宣称是论文官方 baseline。
-- CLAM-SB、DSMIL、TransMIL：已切换为对应作者仓库指定 commit 的核心实现，并仅增加了 padded-bag 到官方输入形状、二分类 score 和项目数据接口的适配。
+审计将“作者模型/损失”和“项目实验协议”分开记录。模型核心尽量保持作者实现；统一的固定 split、验证 AUROC、测试指标和输入接口属于项目级适配，不能表述为作者原始完整训练协议。
 
-## 来源与核对范围
+## 来源与模型架构
 
-| Baseline | 固定来源 commit | 使用的官方核心文件 | 项目中的适配 | 许可证记录 |
+| Baseline | 架构忠实度 | 固定来源 | 当前项目适配 |
+|---|---|---|---|
+| ABMIL / Gated ABMIL | 部分忠实：使用 TorchMIL 1.0.2 ABMIL，而不是作者 WSI 训练仓库 | [AttentionDeepMIL commit `eb0434b`](https://github.com/AMLab-Amsterdam/AttentionDeepMIL/tree/eb0434ba2795711a45d693d60120ae53532b1b93) | 统一输入/输出 shape、BCE score；历史结果保留 |
+| Mean Pooling | 非论文官方模型，项目控制对照 | 项目代码 | masked mean + linear classifier |
+| CLAM-SB | 忠实于作者 `CLAM_SB` 核心网络 | [CLAM commit `53e2409`](https://github.com/mahmoodlab/CLAM/tree/53e2409d4a8189c682c173382964a85f114f923c) | 去除 padded-bag、二分类 score；核心 attention、classifier、instance sampling 未简化 |
+| DSMIL | 忠实于作者 `FCLayer/BClassifier/MILNet` | [DSMIL commit `80465ed`](https://github.com/binli123/dsmil-wsi/tree/80465ed534ac49b5e550833da56c27936f0b9440) | 去除 padded-bag、二分类 score；补齐作者初始化 |
+| TransMIL | 忠实于作者 `_fc1`、两层 TransLayer、PPEG、CLS、`_fc2` | [TransMIL commit `9d6aee5`](https://github.com/szc19990412/TransMIL/tree/9d6aee57c7c72375fb9132dc58cd8c9b0f0a949c) | 去除 padded-bag、`.to(device)` 替代硬编码 `.cuda()`、Nyström PyTorch 2.3 兼容层和左侧 padding 后的尾部取回 |
+
+Nyström 兼容层以 `nystrom-attention==0.0.9` 的源码为数值参考；只对 PyTorch 2.3 不允许的 view inplace 写法做 out-of-place 兼容，并按本项目的左侧 padding 语义从末尾取回原始 `n` 个位置。测试还单独证明了未修正的 head slice 与 tail slice 在非整除长度上确实不同。因此，这里不声称与未修正的原始 0.0.9 wheel 字节级一致，而是明确验证“官方公式 + PyTorch 兼容 + 本项目要求的 padding 修正”。
+
+## Loss、初始化和优化器
+
+| Baseline | Training Loss | Validation Loss | Initialization | Optimizer / scheduler |
 |---|---|---|---|---|
-| ABMIL / Gated ABMIL | [AttentionDeepMIL `eb0434b`](https://github.com/AMLab-Amsterdam/AttentionDeepMIL/tree/eb0434ba2795711a45d693d60120ae53532b1b93) | 官方 attention MIL 结构；当前运行实现为 TorchMIL 1.0.2 | 输出 shape、BCE score | TorchMIL 依赖许可证 |
-| CLAM-SB | [CLAM `53e2409`](https://github.com/mahmoodlab/CLAM/tree/53e2409d4a8189c682c173382964a85f114f923c) | `models/model_clam.py` 的 `CLAM_SB`，包括 gated attention、instance classifiers、top-k sampling | `src/models/clam_sb/model.py` 处理变长 bag；不改变核心网络 | `src/models/clam_sb/THIRD_PARTY_LICENSE.md` |
-| DSMIL | [DSMIL `80465ed`](https://github.com/binli123/dsmil-wsi/tree/80465ed534ac49b5e550833da56c27936f0b9440) | `dsmil.py` 的 `FCLayer`、`BClassifier`、`MILNet` | `src/models/dsmil/model.py` 适配 padded bag；保留 instance critical selection 和 bag branch | `src/models/dsmil/THIRD_PARTY_LICENSE.md` |
-| TransMIL | [TransMIL `9d6aee5`](https://github.com/szc19990412/TransMIL/tree/9d6aee57c7c72375fb9132dc58cd8c9b0f0a949c) | `models/TransMIL.py` 的 `_fc1`、两层 `TransLayer`、PPEG、CLS token、`_fc2` | `src/models/transmil/model.py` 适配输入与二分类 CE；`nystrom_compat.py` 只修复 PyTorch 2.3 的 inplace autograd 兼容性 | TransMIL/依赖许可证按源仓库保留 |
+| ABMIL / Gated | Bag BCEWithLogits | Bag BCEWithLogits | TorchMIL 默认 | Adam，沿用现有配置 |
+| Mean Pooling | Bag BCEWithLogits | Bag BCEWithLogits | PyTorch 默认 | Adam |
+| CLAM-SB | `0.7 * bag CrossEntropy + 0.3 * instance CrossEntropy` | 只计算 Bag CrossEntropy | 作者默认初始化 | Adam，lr `1e-4`，wd `1e-5` |
+| DSMIL | `0.5 * bag BCE + 0.5 * max-instance BCE` | Bag BCE；评估仍使用 bag branch | 与作者 `apply_sparse_init` 一致：Linear/Conv1d/Conv2d orthogonal，bias 0 | Adam，betas `(0.5, 0.9)`，wd `1e-3`，CosineAnnealingLR，eta_min `5e-6` |
+| TransMIL | 二分类 CrossEntropy | 二分类 CrossEntropy | 作者默认初始化 | Lookahead(RAdam)，lr `2e-4`，wd `1e-5` |
 
-## 训练目标与配置
+代码中已明确区分 `compute_training_loss` 与 `compute_validation_loss`。CLAM 的训练总 loss 不再被误当作验证选择 loss。
 
-### CLAM-SB
+## Checkpoint 选择与作者协议差异
 
-使用官方 small 结构 `1024 -> 512 -> 256`、gated attention、dropout 0.25、`k_sample=8`、`subtyping=false`。训练目标严格采用官方训练循环的
+当前六种配置统一使用项目级 `val_auroc` 选择 checkpoint，测试阈值和指标计算保持一致。这是为了让后续聚合器比较使用同一评价协议，不等于作者原始训练脚本协议。
 
-`0.7 * bag CrossEntropy + 0.3 * instance CrossEntropy`。
+| 方法 | 作者原始选择/训练设置 | 本项目决策 | 状态 |
+|---|---|---|---|
+| CLAM | `EarlyStopping` 使用 Validation Bag Loss | 保留 Bag Loss 作为 validation loss，但 checkpoint 选择统一使用 `val_auroc`；当前 strict 配置不启用额外早停 | Project-level Training Adaptation |
+| DSMIL | 使用 `(Accuracy + AUC) / 2` 的 current score；`average=False` 时使用 bag prediction | 保留 `average=False` 的 bag branch；checkpoint 选择统一使用 `val_auroc` | Project-level Training Adaptation；bag branch 已保留 |
+| TransMIL | `fp16=True`、gradient accumulation `2`、`data_shuffle=False` | `data_shuffle=False` 保留；当前项目 `fp16=False`、accumulation `1`，原因是统一的小 batch 验证框架尚未实现作者 AMP/累积器 | Project-level Training Adaptation |
 
-配置为 Adam、learning rate `1e-4`、weight decay `1e-5`、batch size 1、最多 200 epochs；验证集只用于选择 checkpoint，不启用额外的项目自定义早停。
+上述决策都写入 YAML 和每次运行的 `run_metadata.json`，不再把项目适配称作完整作者训练协议。
 
-### DSMIL
+## 数据和输入协议
 
-使用官方 binary path `output_class=1`，保留 instance classifier、critical-instance selection、query/attention 和 bag classifier。训练目标为
+- 固定使用 `data/splits/seed1234.csv`，不重新随机划分。
+- 训练只请求 `X, Y`；`y_inst` 和 `coords` 仅用于审计或后续分析。
+- 所有模型使用同一份 1024 维 UNI feature、同一 test threshold 和同一套 test metrics。
+- `scripts/audit_data.py` 额外审计 399/400 manifest gap、`test_049`、WSI/patch label 一致性、patch label 合法值、未引用 feature 文件和多候选路径。
 
-`0.5 * bag BCEWithLogits + 0.5 * max-instance BCEWithLogits`。
+## 验证状态
 
-配置为 Adam `(betas=(0.5, 0.9), weight_decay=1e-3)`、learning rate `1e-4`、CosineAnnealingLR `eta_min=5e-6`、最多 50 epochs、patience 10。评估使用官方 bag branch，不取 instance prediction 平均。
+| 项目 | 状态 |
+|---|---|
+| DSMIL 官方初始化存在且正交/零 bias | 已验证：4 个 Linear/Conv1d 层通过正交性和零 bias 检查 |
+| CLAM training loss 与 validation bag loss 分离 | 已验证：11 个基础/协议测试通过 |
+| TransMIL Nyström forward/backward 数值对照 | 已验证：7 个长度/前后向案例通过，含 145、256、8101、44522 |
+| 六模型真实 small/medium/max Forward、Loss、Backward、finite gradient、optimizer step、checkpoint reload、evaluation output | 已验证：18/18 通过，6 模型 × 3 个真实 Bag；TransMIL Lookahead 另做 PyTorch 2.3 hook 兼容修正 |
+| 数据审计扩展 | 已验证：399 条 manifest、0 缺失必需文件、0 标签不一致、0 非法 patch label、0 额外 feature、0 重复候选路径 |
+| 历史 ABMIL seed1234 是否与新 seed 0–3 完全同协议 | 已确认：split_used.csv SHA256 相同；保存 config 的模型、epoch、Adam、学习率、阈值一致；`auroc` 与当前 `val_auroc` 在选择逻辑中等价 |
 
-### TransMIL
+验收未通过前不允许启动正式多 seed 训练；本轮列出的验收项均已通过，因此可以在单独的正式训练任务中按这些已记录的协议启动后续 baseline。
 
-使用官方 `1024 -> 512` 投影、两层 8-head Nystrom attention、256 landmarks、6 次 pseudo-inverse、residual=True、dropout 0.1、PPEG 的 7/5/3 depth-wise convolution 和二分类 logits。bag 序列补方仍由官方实现完成，不截断最长 bag。
+## 本轮实际验收记录
 
-配置为 Lookahead(RAdam)、learning rate `2e-4`、weight decay `1e-5`、batch size 1、最多 200 epochs、patience 10，loss 为二分类 CrossEntropy。
+- 基础模型、项目契约、DSMIL 初始化和训练协议：`11 passed`。
+- Nyström 数值对照：`7 passed`；同一权重、同一输入，比较 forward、输入梯度和参数梯度。
+- 真实数据 smoke：`18 passed, 0 failed`；使用真实 CAMELYON16 + UNI feature 的 small/medium/max Bag，覆盖六个模型的 loss、backward、finite gradient、optimizer step、checkpoint save/reload 和 evaluation output。
+- 数据审计：通过；详细结果见 `reports/project/data_audit.md`。
 
-### 项目共同约束
-
-- 固定 `data/splits/seed1234.csv`，不因不同 baseline 改变划分。
-- 输入固定为已下载的 1024 维 UNI feature；训练只读取 `X, Y`，不使用坐标和 instance label。
-- 训练接口用 scalar `logit_1 - logit_0` 统一计算 ROC/PR；这等价于两类 softmax 的正类概率经过 sigmoid。
-- 每个 baseline、seed、log、output、report 均隔离在自己的子目录。
-
-## 验证记录
-
-远端香港服务器的项目 venv 中已通过：
-
-```text
-8 passed, 1 warning
-```
-
-覆盖 6 个模型入口和项目契约测试。另有 `nystrom_compat.py`：固定依赖 `nystrom-attention==0.0.9` 在 PyTorch 2.3 上对 `chunk` view 执行 inplace `q *= scale` 会触发 autograd 错误，因此只把该操作改为 out-of-place，未改变 attention 计算公式、层数或超参数。
-
-真实 CAMELYON16 feature smoke test 已完成，完整机器可读结果见 `reports/project/official_smoke_test.json`，摘要见 `reports/project/official_smoke_test.md`。测试覆盖 140、7,984、44,402 instances；六个模型全部成功 forward。最大 TransMIL bag 的内部补方为 119 instances，峰值显存约 2,814 MB，没有截断或 OOM。正式多 seed 结果写入对应 `reports/<baseline>/`，不与本审计报告混合。
+因此，本轮审查验收通过，可以进入正式训练前的实验排程；本轮本身没有启动 CLAM、DSMIL 或 TransMIL 的正式多 seed 训练。

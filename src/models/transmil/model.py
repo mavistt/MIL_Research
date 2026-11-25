@@ -30,6 +30,11 @@ class OfficialTransMIL(nn.Module):
         bag_loss = F.cross_entropy(results["logits"], labels)
         return two_class_positive_logit(results["logits"]), bag_loss, {"bag_loss": bag_loss}
 
+    def compute_validation_loss(self, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor):
+        results = self._official_forward(x, mask)
+        bag_loss = F.cross_entropy(results["logits"], y.reshape(-1).long())
+        return two_class_positive_logit(results["logits"]), bag_loss, {"bag_loss": bag_loss}
+
     def compute_loss(self, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor):
         logits, loss, details = self.compute_training_loss(y, x, mask)
         return logits, {"total_loss": loss, **details}
