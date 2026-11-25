@@ -1,0 +1,22 @@
+{
+  "n": 54,
+  "threshold": 0.5,
+  "auroc": 1.0,
+  "auprc": 0.9999999999999998,
+  "accuracy": 1.0,
+  "precision": 1.0,
+  "recall_sensitivity": 1.0,
+  "specificity": 1.0,
+  "f1": 1.0,
+  "balanced_accuracy": 1.0,
+  "confusion_matrix": [
+    [
+      32,
+      0
+    ],
+    [
+      0,
+      22
+    ]
+  ]
+}
