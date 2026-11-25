@@ -3,7 +3,10 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import os
 import shutil
+import subprocess
+import time
 from pathlib import Path
 import sys
 
@@ -49,13 +52,31 @@ def _validation_loss_and_logits(model, y: torch.Tensor, x: torch.Tensor, mask: t
     return logits, loss, {"bag_loss": loss}
 
 
+def _sync_device(device: torch.device) -> None:
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+
+
 def run_epoch(model, loader, optimizer, device, training: bool):
     model.train(training)
     losses, ys, ps, names = [], [], [], []
-    for batch in loader:
+    data_seconds = 0.0
+    model_seconds = 0.0
+    iterator = iter(loader)
+    while True:
+        _sync_device(device)
+        fetch_started = time.perf_counter()
+        try:
+            batch = next(iterator)
+        except StopIteration:
+            break
+        data_seconds += time.perf_counter() - fetch_started
+
         x = batch["X"].to(device)
         mask = batch["mask"].to(device)
         y = batch["Y"].float().to(device)
+        _sync_device(device)
+        compute_started = time.perf_counter()
         with torch.set_grad_enabled(training):
             loss_fn = _loss_and_logits if training else _validation_loss_and_logits
             logits, loss, _ = loss_fn(model, y, x, mask)
@@ -63,13 +84,15 @@ def run_epoch(model, loader, optimizer, device, training: bool):
                 optimizer.zero_grad(set_to_none=True)
                 loss.backward()
                 optimizer.step()
+        _sync_device(device)
+        model_seconds += time.perf_counter() - compute_started
         losses.append(float(loss.detach().cpu()))
         ys.extend(y.detach().cpu().numpy().astype(int).tolist())
         # For two-class CE adapters the scalar is logit_1-logit_0, whose
         # sigmoid is exactly the softmax probability of class 1.
         ps.extend(torch.sigmoid(logits).detach().cpu().numpy().tolist())
         names.extend(batch["bag_name"])
-    return float(np.mean(losses)), ys, ps, names
+    return float(np.mean(losses)), ys, ps, names, data_seconds, model_seconds
 
 
 def build_optimizer(model: torch.nn.Module, training_cfg: dict) -> torch.optim.Optimizer:
@@ -147,6 +170,10 @@ def main() -> None:
     epochs = int(training_cfg["epochs"])
     optimizer = build_optimizer(model, training_cfg)
     scheduler = build_scheduler(optimizer, training_cfg, epochs)
+    wsi_shuffle = bool(training_cfg.get("wsi_shuffle", True))
+    patch_shuffle = bool(training_cfg.get("patch_shuffle", False))
+    if patch_shuffle:
+        raise ValueError("Patch shuffling is not implemented; keep training.patch_shuffle=false to preserve WSI patch order")
     loaders = {}
     for partition in ("train", "val", "test"):
         names = split.loc[split["partition"] == partition, "bag_name"].tolist()
@@ -154,7 +181,7 @@ def main() -> None:
         loaders[partition] = DataLoader(
             dataset,
             batch_size=int(training_cfg.get("batch_size", 1)),
-            shuffle=partition == "train" and bool(training_cfg.get("data_shuffle", True)),
+            shuffle=partition == "train" and wsi_shuffle,
             collate_fn=collate_bags,
             num_workers=int(training_cfg.get("num_workers", 0)),
         )
@@ -166,13 +193,17 @@ def main() -> None:
     use_early_stopping = bool(training_cfg.get("early_stopping", True))
     min_epoch = int(training_cfg.get("early_stopping_min_epoch", 1))
     patience_limit = int(training_cfg.get("early_stopping_patience", 10))
+    epoch_started_all = time.perf_counter()
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
     for epoch in range(1, epochs + 1):
-        train_loss, _, _, _ = run_epoch(model, loaders["train"], optimizer, device, True)
-        val_loss, val_y, val_p, _ = run_epoch(model, loaders["val"], optimizer, device, False)
+        epoch_started = time.perf_counter()
+        train_loss, _, _, _, train_data_seconds, train_model_seconds = run_epoch(model, loaders["train"], optimizer, device, True)
+        val_loss, val_y, val_p, _, val_data_seconds, val_model_seconds = run_epoch(model, loaders["val"], optimizer, device, False)
         val_metrics = compute_metrics(val_y, val_p)
         score, lower_is_better = selection_score(val_loss, val_metrics, metric_name)
         improved = score > best
-        history.append({"epoch": epoch, "train_loss": train_loss, "val_bag_loss": val_loss, "val_loss": val_loss, "val_auroc": val_metrics["auroc"], "val_auprc": val_metrics["auprc"], "selection_score": score})
+        history.append({"epoch": epoch, "train_loss": train_loss, "val_bag_loss": val_loss, "val_loss": val_loss, "val_auroc": val_metrics["auroc"], "val_auprc": val_metrics["auprc"], "selection_score": score, "train_data_seconds": train_data_seconds, "train_model_seconds": train_model_seconds, "val_data_seconds": val_data_seconds, "val_model_seconds": val_model_seconds, "epoch_seconds": time.perf_counter() - epoch_started})
         print(history[-1], flush=True)
         if improved:
             best = score
@@ -186,17 +217,27 @@ def main() -> None:
         if scheduler is not None:
             scheduler.step()
     pd.DataFrame(history).to_csv(output / "training_history.csv", index=False)
-    (output / "run_metadata.json").write_text(json.dumps({"device": str(device), "best_epoch": best_epoch, "checkpoint_selection_metric": metric_name, "selection_direction": "minimize" if lower_is_better else "maximize", "training_loss_definition": "model-specific official training objective", "validation_loss_definition": "model-specific bag-level validation loss", "data_shuffle": bool(training_cfg.get("data_shuffle", True)), "fp16": bool(training_cfg.get("fp16", False)), "gradient_accumulation_steps": int(training_cfg.get("gradient_accumulation_steps", 1)), "protocol_note": "Project-level validation/checkpoint protocol is configured independently from author-specific training loops."}, indent=2), encoding="utf-8")
     checkpoint = torch.load(output / "checkpoint_best.pt", map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model"])
+    evaluation_timing = {}
     for partition in ("val", "test"):
-        _, y, p, names = run_epoch(model, loaders[partition], optimizer, device, False)
+        _, y, p, names, data_seconds, model_seconds = run_epoch(model, loaders[partition], optimizer, device, False)
+        evaluation_timing[partition] = {"data_read_seconds": data_seconds, "model_compute_seconds": model_seconds, "total_seconds": data_seconds + model_seconds, "wsi_count": len(y), "mean_model_compute_seconds_per_wsi": model_seconds / len(y) if y else float("nan")}
         metrics = compute_metrics(y, p, threshold=float(config["evaluation"]["threshold"]))
         dump_metrics(metrics, output / f"metrics_{partition}.json")
         if partition == "test":
             threshold = float(config["evaluation"]["threshold"])
             pd.DataFrame({"wsi_id": names, "label": y, "probability": p, "predicted_label": (np.asarray(p) >= threshold).astype(int), "checkpoint": "checkpoint_best.pt"}).to_csv(output / "predictions_test.csv", index=False)
             save_curves(y, p, output)
+    _sync_device(device)
+    code_commit = os.environ.get("PROJECT_CODE_COMMIT", "unknown")
+    try:
+        if code_commit == "unknown":
+            code_commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, check=False, capture_output=True, text=True).stdout.strip() or "unknown"
+    except OSError:
+        pass
+    peak_memory_mb = None if device.type != "cuda" else round(torch.cuda.max_memory_allocated(device) / (1024 * 1024), 2)
+    (output / "run_metadata.json").write_text(json.dumps({"device": str(device), "gpu_index": torch.cuda.current_device() if device.type == "cuda" else None, "gpu_name": torch.cuda.get_device_name(device) if device.type == "cuda" else None, "code_commit": code_commit, "config_path": str(args.config), "parameter_count": sum(parameter.numel() for parameter in model.parameters()), "trainable_parameter_count": sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad), "actual_epochs": len(history), "best_epoch": best_epoch, "total_training_seconds": time.perf_counter() - epoch_started_all, "peak_gpu_memory_mb": peak_memory_mb, "checkpoint_selection_metric": metric_name, "selection_direction": "minimize" if lower_is_better else "maximize", "training_loss_definition": "model-specific official training objective", "validation_loss_definition": "model-specific bag-level validation loss", "wsi_shuffle": {"train": wsi_shuffle, "val": False, "test": False}, "patch_shuffle": patch_shuffle, "patch_order_note": "Original within-WSI patch order is preserved; only training WSI order is shuffled.", "fp16": bool(training_cfg.get("fp16", False)), "gradient_accumulation_steps": int(training_cfg.get("gradient_accumulation_steps", 1)), "evaluation_timing": evaluation_timing, "protocol_note": "Project-level validation/checkpoint protocol is configured independently from author-specific training loops."}, indent=2), encoding="utf-8")
     print(f"output={output}")
 
 

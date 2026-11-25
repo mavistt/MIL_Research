@@ -38,7 +38,7 @@ Nyström 兼容层以 `nystrom-attention==0.0.9` 的源码为数值参考；只�
 |---|---|---|---|
 | CLAM | `EarlyStopping` 使用 Validation Bag Loss | 保留 Bag Loss 作为 validation loss，但 checkpoint 选择统一使用 `val_auroc`；当前 strict 配置不启用额外早停 | Project-level Training Adaptation |
 | DSMIL | 使用 `(Accuracy + AUC) / 2` 的 current score；`average=False` 时使用 bag prediction | 保留 `average=False` 的 bag branch；checkpoint 选择统一使用 `val_auroc` | Project-level Training Adaptation；bag branch 已保留 |
-| TransMIL | `fp16=True`、gradient accumulation `2`、`data_shuffle=False` | `data_shuffle=False` 保留；当前项目 `fp16=False`、accumulation `1`，原因是统一的小 batch 验证框架尚未实现作者 AMP/累积器 | Project-level Training Adaptation |
+| TransMIL | `fp16=True`、gradient accumulation `2`；作者 `CamelData` 的 `data_shuffle=False` 表示不打乱 WSI 内部 patch 顺序 | `patch_shuffle=False` 保留原始 patch 顺序；训练 DataLoader 的 WSI 顺序统一为 `wsi_shuffle=True`，验证/测试为 `False`；当前项目 `fp16=False`、accumulation `1`，原因是统一的小 batch 验证框架尚未实现作者 AMP/累积器 | Project-level Training Adaptation |
 
 上述决策都写入 YAML 和每次运行的 `run_metadata.json`，不再把项目适配称作完整作者训练协议。
 
@@ -47,6 +47,7 @@ Nyström 兼容层以 `nystrom-attention==0.0.9` 的源码为数值参考；只�
 - 固定使用 `data/splits/seed1234.csv`，不重新随机划分。
 - 训练只请求 `X, Y`；`y_inst` 和 `coords` 仅用于审计或后续分析。
 - 所有模型使用同一份 1024 维 UNI feature、同一 test threshold 和同一套 test metrics。
+- `training.wsi_shuffle` 只控制训练集 WSI 的 DataLoader 顺序；`training.patch_shuffle=false` 明确保持每个 WSI 内部的原始 patch 顺序。Smoke test 只从固定 split 的 train partition 取真实 Bag。
 - `scripts/audit_data.py` 额外审计 399/400 manifest gap、`test_049`、WSI/patch label 一致性、patch label 合法值、未引用 feature 文件和多候选路径。
 
 ## 验证状态

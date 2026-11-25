@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 
 import numpy as np
+import pandas as pd
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -101,7 +102,9 @@ def main() -> None:
     args = parser.parse_args()
     root = args.project_root.resolve()
     device = torch.device(args.device)
-    dataset = Camelyon16Bags(root / "data/camelyon16", fields=("X", "Y"))
+    split = pd.read_csv(root / "data/splits/seed1234.csv")
+    train_names = split.loc[split["partition"].astype(str) == "train", "bag_name"].tolist()
+    dataset = Camelyon16Bags(root / "data/camelyon16", bag_names=train_names, fields=("X", "Y"))
     chosen = choose_bags(dataset)
     config_paths = {
         "mean_pooling": root / "configs/experiments/mean_pooling.yaml",

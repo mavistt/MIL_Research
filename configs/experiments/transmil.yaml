@@ -4,6 +4,8 @@ model:
   n_classes: 2
 training:
   batch_size: 1
+  wsi_shuffle: true
+  patch_shuffle: false
   epochs: 200
   learning_rate: 0.0002
   weight_decay: 0.00001
@@ -11,7 +13,6 @@ training:
   optimizer: lookahead_radam
   lookahead_alpha: 0.5
   lookahead_k: 6
-  data_shuffle: false
   fp16: false
   gradient_accumulation_steps: 1
   early_stopping: true
