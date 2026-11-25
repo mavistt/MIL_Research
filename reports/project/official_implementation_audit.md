@@ -67,7 +67,8 @@ Nyström 兼容层以 `nystrom-attention==0.0.9` 的源码为数值参考；只�
 
 - 基础模型、项目契约、DSMIL 初始化和训练协议：`11 passed`。
 - Nyström 数值对照：`7 passed`；同一权重、同一输入，比较 forward、输入梯度和参数梯度。
-- 真实数据 smoke：`18 passed, 0 failed`；使用真实 CAMELYON16 + UNI feature 的 small/medium/max Bag，覆盖六个模型的 loss、backward、finite gradient、optimizer step、checkpoint save/reload 和 evaluation output。
+- 完整 pytest：`19 passed`；新增 TransMIL 连续 7-step Lookahead 预检覆盖第 6 步 slow-buffer 更新。
+- 真实数据 smoke：`18 passed, 0 failed`；使用固定 split 的 train partition 真实 CAMELYON16 + UNI feature small/medium/max Bag，覆盖六个模型的 loss、backward、finite gradient、optimizer step、checkpoint save/reload 和 evaluation output。
 - 数据审计：通过；详细结果见 `reports/project/data_audit.md`。
 
 因此，本轮审查验收通过，可以进入正式训练前的实验排程；本轮本身没有启动 CLAM、DSMIL 或 TransMIL 的正式多 seed 训练。
