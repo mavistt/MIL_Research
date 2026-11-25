@@ -19,6 +19,16 @@ WSI-MIL-Research/
 └── .venv/                   项目专用 Python 虚拟环境
 ```
 
+各目录内都有更细的中文说明：
+
+- `configs/README.md`：配置文件如何控制数据集和实验。
+- `data/README.md`：下载文件、解压数据、审计结果和固定划分。
+- `src/README.md`：数据集、模型、指标和工具代码的分工。
+- `scripts/README.md`：每个命令行脚本的用途。
+- `reports/README.md`：环境、数据审计和 smoke test 报告。
+- `outputs/README.md`：训练结果和评估结果的说明。
+- `tests/README.md`：自动化测试说明。
+
 ## 环境安装
 
 请在项目根目录创建独立虚拟环境：
