@@ -19,6 +19,17 @@ WSI-MIL-Research/
 └── .venv/                   项目专用 Python 虚拟环境
 ```
 
+每个 baseline 都按同一层级隔离：
+
+```text
+src/models/<baseline>/                 独立模型实现与说明
+configs/experiments/<baseline>.yaml    独立超参数配置
+outputs/camelyon16_uni/<baseline>/     独立 checkpoint、指标和图表
+logs/<baseline>/                       独立调度日志与 seed 日志
+```
+
+当前 baseline 目录为 `abmil`、`gated_abmil`、`mean_pooling`、`clam_sb`、`dsmil` 和 `transmil`。Gated ABMIL 与标准 ABMIL 共享同一个 TorchMIL 适配器，仅通过配置开关启用门控注意力；实验输出和日志仍完全分开。
+
 各目录内都有更细的中文说明：
 
 - `configs/README.md`：配置文件如何控制数据集和实验。
@@ -75,7 +86,7 @@ python scripts/make_splits.py --project-root .
 
 训练使用官方训练分区中的分层 80/20 train/validation 划分，随机种子为 1234；官方 test 分区保持不变，不用于早停、模型选择或阈值优化。
 
-## Smoke test 与 ABMIL 基线
+## Smoke test 与多 Seed 基线
 
 ```bash
 python scripts/smoke_test.py --project-root .
@@ -85,6 +96,22 @@ python scripts/evaluate.py --project-root . --config configs/experiments/abmil.y
 ```
 
 Smoke test 会加载一个 WSI、检查变长 bag 的 padding mask、执行 ABMIL 前向和反向传播，并确认训练路径不包含 `coords` 或 `y_inst`。初始训练使用 batch size 1、Adam、BCEWithLogitsLoss、验证集选最优检查点和早停。
+
+原始 `abmil_seed1234/` 历史结果保持不变。新的多 seed 实验使用独立目录和日志：
+
+```bash
+nohup python scripts/run_seeds.py \
+  --project-root . \
+  --config configs/experiments/abmil.yaml \
+  --experiment-name abmil_ungated \
+  --seeds 0 1 2 3 --skip-complete \
+  > logs/abmil_ungated_seeds.log 2>&1 &
+python scripts/summarize_results.py --project-root . --experiment-name abmil_ungated
+```
+
+每个 seed 的结果位于 `outputs/camelyon16_uni/<实验名>/seed_<seed>/`，对应日志位于 `logs/`。`run_seeds.py` 按 seed 串行运行，支持跳过已完成的 seed；汇总脚本会输出每个 seed、均值、样本标准差和有效样本数。
+
+当前已实现并保持统一训练接口的模型包括：Mean Pooling、标准 ABMIL、Gated ABMIL、CLAM-SB、DSMIL 和 TransMIL。CLAM-SB、DSMIL、TransMIL 使用 TorchMIL 1.0.2 的官方实现；实现细节见 `reports/baseline_implementation.md`。
 
 基线输出包括：
 
@@ -98,7 +125,7 @@ Smoke test 会加载一个 WSI、检查变长 bag 的 padding mask、执行 ABMI
 
 ## 可扩展设计
 
-数据适配器、特征变换、MIL 聚合器、分类头和实验配置保持相对独立。当前只实现可运行的 ABMIL 基线，不预先添加空的未来模型占位符。后续可以在不重写下载、数据审计、训练和评估流程的前提下加入 Gated ABMIL、CLAM、DSMIL、TransMIL、Mamba 或其他聚合方法。
+数据适配器、特征变换、MIL 聚合器、分类头和实验配置保持相对独立。新增模型只需实现统一的 `forward(x, mask)` 和 `compute_loss(y, x, mask)` 接口，并在 registry 中注册；不会改变固定 split 或特征文件。
 
 ## 版本控制约定
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 from pathlib import Path
 import sys
 
@@ -20,9 +21,11 @@ def main() -> None:
     parser.add_argument("--project-root", type=Path, default=Path("."))
     parser.add_argument("--config", type=Path, default=Path("configs/experiments/abmil.yaml"))
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path, default=None)
     args = parser.parse_args()
     root = args.project_root.resolve()
     config = load_yaml(root / args.config)
+    config = copy.deepcopy(config)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = build_model(config).to(device)
     checkpoint = torch.load(root / args.checkpoint, map_location=device, weights_only=False)
@@ -39,7 +42,10 @@ def main() -> None:
             ys.extend(batch["Y"].numpy().astype(int).tolist())
             ps.extend(torch.sigmoid(logits).cpu().numpy().tolist())
             ids.extend(batch["bag_name"])
-    output = root / "outputs" / "abmil_evaluated"
+    if args.output_dir is not None:
+        output = args.output_dir if args.output_dir.is_absolute() else root / args.output_dir
+    else:
+        output = root / "outputs" / "abmil_evaluated"
     output.mkdir(parents=True, exist_ok=True)
     dump_metrics(compute_metrics(ys, ps), output / "metrics_test.json")
     pd.DataFrame({"wsi_id": ids, "label": ys, "probability": ps, "predicted_label": (pd.Series(ps) >= 0.5).astype(int), "checkpoint": str(args.checkpoint)}).to_csv(output / "predictions_test.csv", index=False)

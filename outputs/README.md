@@ -4,3 +4,4 @@
 
 - `abmil_seed1234/`：训练、验证和测试结果。
 - `abmil_evaluated/`：使用独立评估脚本重新生成的 test 结果。
+- `camelyon16_uni/<experiment>/seed_<seed>/`：多 seed 实验的隔离输出，每个目录包含 config、split、checkpoint、训练历史、指标、预测和图表。

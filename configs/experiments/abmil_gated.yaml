@@ -1,0 +1,20 @@
+model:
+  name: gated_abmil
+  input_dim: 1024
+  att_dim: 128
+  dropout: 0.0
+training:
+  batch_size: 1
+  epochs: 30
+  learning_rate: 0.0001
+  weight_decay: 0.0
+  optimizer: adam
+  early_stopping_patience: 8
+  selection_metric: auroc
+  num_workers: 0
+  device: auto
+reproducibility:
+  split_seed: 1234
+  training_seed: 0
+evaluation:
+  threshold: 0.5

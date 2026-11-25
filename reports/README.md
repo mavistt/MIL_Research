@@ -3,5 +3,9 @@
 - `data_audit.md`：完整数据一致性和形状审计结果。
 - `environment.md`：Python、PyTorch、TorchMIL、CUDA 和 GPU 版本记录。
 - `smoke_test.md`：ABMIL 单步前向、反向和字段隔离验证结果。
+- `baseline_implementation.md`：各 baseline 的实现来源、损失和兼容性说明。
+- `abmil_ungated_summary.md/.csv`：标准 ABMIL 多 seed（含历史 seed1234）的测试集汇总。
+- `gated_abmil_summary.md/.csv`：Gated ABMIL 三个 seed 的测试集汇总。
+- `*_per_seed.csv`：每个实验的逐 seed 测试指标。
 
 这里保存可长期查看的报告，不保存临时运行日志。
