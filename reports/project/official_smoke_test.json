@@ -1,0 +1,178 @@
+{
+  "device": "cuda:0",
+  "bags": {
+    "small": {
+      "bag_name": "normal_042",
+      "label": 0,
+      "n_instances": 140
+    },
+    "medium": {
+      "bag_name": "tumor_062",
+      "label": 1,
+      "n_instances": 7984
+    },
+    "large": {
+      "bag_name": "test_069",
+      "label": 1,
+      "n_instances": 44402
+    }
+  },
+  "models": {
+    "mean_pooling": {
+      "small": {
+        "bag_name": "normal_042",
+        "n_instances": 140,
+        "score": -0.7431946396827698,
+        "elapsed_seconds": 0.085,
+        "peak_memory_mb": 8.68,
+        "transmil_internal_padding": 0
+      },
+      "medium": {
+        "bag_name": "tumor_062",
+        "n_instances": 7984,
+        "score": -0.5348525643348694,
+        "elapsed_seconds": 0.001,
+        "peak_memory_mb": 134.17,
+        "transmil_internal_padding": 0
+      },
+      "large": {
+        "bag_name": "test_069",
+        "n_instances": 44402,
+        "score": -0.6338334679603577,
+        "elapsed_seconds": 0.001,
+        "peak_memory_mb": 418.35,
+        "transmil_internal_padding": 0
+      }
+    },
+    "abmil": {
+      "small": {
+        "bag_name": "normal_042",
+        "n_instances": 140,
+        "score": 0.26900187134742737,
+        "elapsed_seconds": 0.155,
+        "peak_memory_mb": 10.25,
+        "transmil_internal_padding": 0
+      },
+      "medium": {
+        "bag_name": "tumor_062",
+        "n_instances": 7984,
+        "score": 0.5815609693527222,
+        "elapsed_seconds": 0.027,
+        "peak_memory_mb": 47.62,
+        "transmil_internal_padding": 0
+      },
+      "large": {
+        "bag_name": "test_069",
+        "n_instances": 44402,
+        "score": -0.1587662398815155,
+        "elapsed_seconds": 0.001,
+        "peak_memory_mb": 226.03,
+        "transmil_internal_padding": 0
+      }
+    },
+    "gated_abmil": {
+      "small": {
+        "bag_name": "normal_042",
+        "n_instances": 140,
+        "score": -0.06810852885246277,
+        "elapsed_seconds": 0.004,
+        "peak_memory_mb": 11.32,
+        "transmil_internal_padding": 0
+      },
+      "medium": {
+        "bag_name": "tumor_062",
+        "n_instances": 7984,
+        "score": 0.005480289459228516,
+        "elapsed_seconds": 0.001,
+        "peak_memory_mb": 52.71,
+        "transmil_internal_padding": 0
+      },
+      "large": {
+        "bag_name": "test_069",
+        "n_instances": 44402,
+        "score": 0.2345017045736313,
+        "elapsed_seconds": 0.001,
+        "peak_memory_mb": 248.72,
+        "transmil_internal_padding": 0
+      }
+    },
+    "clam_sb": {
+      "small": {
+        "bag_name": "normal_042",
+        "n_instances": 140,
+        "score": 0.17139089107513428,
+        "elapsed_seconds": 0.048,
+        "peak_memory_mb": 14.29,
+        "transmil_internal_padding": 0
+      },
+      "medium": {
+        "bag_name": "tumor_062",
+        "n_instances": 7984,
+        "score": 0.28142842650413513,
+        "elapsed_seconds": 0.003,
+        "peak_memory_mb": 113.05,
+        "transmil_internal_padding": 0
+      },
+      "large": {
+        "bag_name": "test_069",
+        "n_instances": 44402,
+        "score": 0.4024989902973175,
+        "elapsed_seconds": 0.003,
+        "peak_memory_mb": 577.31,
+        "transmil_internal_padding": 0
+      }
+    },
+    "dsmil": {
+      "small": {
+        "bag_name": "normal_042",
+        "n_instances": 140,
+        "score": 0.787664532661438,
+        "elapsed_seconds": 1.104,
+        "peak_memory_mb": 11.44,
+        "transmil_internal_padding": 0
+      },
+      "medium": {
+        "bag_name": "tumor_062",
+        "n_instances": 7984,
+        "score": 0.33678531646728516,
+        "elapsed_seconds": 0.158,
+        "peak_memory_mb": 80.41,
+        "transmil_internal_padding": 0
+      },
+      "large": {
+        "bag_name": "test_069",
+        "n_instances": 44402,
+        "score": 0.9277814626693726,
+        "elapsed_seconds": 0.007,
+        "peak_memory_mb": 402.42,
+        "transmil_internal_padding": 0
+      }
+    },
+    "transmil": {
+      "small": {
+        "bag_name": "normal_042",
+        "n_instances": 140,
+        "score": 0.8067084550857544,
+        "elapsed_seconds": 1.218,
+        "peak_memory_mb": 49.13,
+        "transmil_internal_padding": 4
+      },
+      "medium": {
+        "bag_name": "tumor_062",
+        "n_instances": 7984,
+        "score": 0.9953230619430542,
+        "elapsed_seconds": 0.008,
+        "peak_memory_mb": 536.71,
+        "transmil_internal_padding": 116
+      },
+      "large": {
+        "bag_name": "test_069",
+        "n_instances": 44402,
+        "score": 0.7570793628692627,
+        "elapsed_seconds": 0.01,
+        "peak_memory_mb": 2814.28,
+        "transmil_internal_padding": 119
+      }
+    }
+  }
+}

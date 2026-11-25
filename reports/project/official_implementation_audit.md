@@ -58,4 +58,4 @@
 
 覆盖 6 个模型入口和项目契约测试。另有 `nystrom_compat.py`：固定依赖 `nystrom-attention==0.0.9` 在 PyTorch 2.3 上对 `chunk` view 执行 inplace `q *= scale` 会触发 autograd 错误，因此只把该操作改为 out-of-place，未改变 attention 计算公式、层数或超参数。
 
-真实 CAMELYON16 feature 的 small / medium / large bag smoke test 完成后，会把样本数量、显存和耗时补到本报告；正式多 seed 结果写入对应 `reports/<baseline>/`，不与本审计报告混合。
+真实 CAMELYON16 feature smoke test 已完成，完整机器可读结果见 `reports/project/official_smoke_test.json`，摘要见 `reports/project/official_smoke_test.md`。测试覆盖 140、7,984、44,402 instances；六个模型全部成功 forward。最大 TransMIL bag 的内部补方为 119 instances，峰值显存约 2,814 MB，没有截断或 OOM。正式多 seed 结果写入对应 `reports/<baseline>/`，不与本审计报告混合。
