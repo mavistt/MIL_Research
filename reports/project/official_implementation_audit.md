@@ -72,3 +72,13 @@ Nyström 兼容层以 `nystrom-attention==0.0.9` 的源码为数值参考；只�
 - 数据审计：通过；详细结果见 `reports/project/data_audit.md`。
 
 因此，本轮审查验收通过，可以进入正式训练前的实验排程；本轮本身没有启动 CLAM、DSMIL 或 TransMIL 的正式多 seed 训练。
+
+## 正式三 Baseline 训练结果
+
+后续正式训练已按本报告记录的协议完成：CLAM-SB、DSMIL、TransMIL 均完成 seed `0/1/2`，三个模型的每个 seed 均正常退出并生成 checkpoint、training history、验证/测试 metrics、predictions 和 run metadata。
+
+- CLAM-SB：AUROC `0.984779 ± 0.008493`，AUPRC `0.981782 ± 0.007359`。
+- DSMIL：AUROC `0.962585 ± 0.015693`，AUPRC `0.959662 ± 0.011634`。
+- TransMIL：AUROC `0.958759 ± 0.047688`，AUPRC `0.954957 ± 0.052745`。
+
+六个 Baseline 的 common seed 0/1/2 总比较见 `reports/project/all_baselines_comparison.md`；测试 WSI ID、label 和 split 一致性检查通过，固定 split SHA256 为 `dd07e2e746c88effb7b74b3e71df3257a986b936a3a166717042a7e9ebe7710e`。

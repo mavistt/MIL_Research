@@ -62,7 +62,7 @@ def main() -> None:
             predictions_path = seed_root / "predictions_test.csv"
             split_path = seed_root / "split_used.csv"
             metadata_path = seed_root / "run_metadata.json"
-            if not all(path.exists() for path in (metrics_path, predictions_path, split_path, metadata_path)):
+            if not all(path.exists() for path in (metrics_path, predictions_path, split_path)):
                 raise SystemExit(f"Incomplete result for {experiment} seed {seed}: {seed_root}")
 
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
@@ -78,12 +78,12 @@ def main() -> None:
                 if split_hash != reference_split_hash:
                     consistency.append(f"split_used.csv SHA256 differs: {experiment} seed {seed}")
 
-            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.exists() else {}
             provenance.append(
                 {
                     "baseline": experiment,
                     "seed": seed,
-                    "code_commit": metadata.get("code_commit", "unknown"),
+                    "code_commit": metadata.get("code_commit", "legacy/unknown"),
                     "parameter_count": metadata.get("parameter_count"),
                     "trainable_parameter_count": metadata.get("trainable_parameter_count"),
                     "actual_epochs": metadata.get("actual_epochs"),
@@ -132,7 +132,7 @@ def main() -> None:
             "",
             "## Provenance and compute records",
             "",
-            "每个 seed 的 code commit、参数量、实际 epoch、最佳 checkpoint epoch、总训练时间、峰值显存和单 WSI 测试模型计算时间见 `reports/project/all_baselines_compute.csv`。",
+            "每个 seed 的 code commit、参数量、实际 epoch、最佳 checkpoint epoch、总训练时间、峰值显存和单 WSI 测试模型计算时间见 `reports/project/all_baselines_compute.csv`；历史实验缺少本轮 metadata 的字段标记为 `legacy/unknown`。",
             "",
             "标准 ABMIL 的历史 seed1234 与新 seed 0–3 的五 Seed 结果继续保留在 `reports/abmil_ungated/summary.*`，不混入本表的 common-seed 主比较。",
         ]
