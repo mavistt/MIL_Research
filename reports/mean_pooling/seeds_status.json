@@ -1,0 +1,29 @@
+[
+  {
+    "seed": 0,
+    "status": "completed",
+    "returncode": 0,
+    "output": "/data2/lyt/WSI-MIL-Resarch/outputs/camelyon16_uni/mean_pooling/seed_0",
+    "log": "/data2/lyt/WSI-MIL-Resarch/logs/mean_pooling/seed_0.log",
+    "started_at": "2026-11-25T08:02:23.292680+00:00",
+    "finished_at": "2026-11-25T08:14:32.800796+00:00"
+  },
+  {
+    "seed": 1,
+    "status": "completed",
+    "returncode": 0,
+    "output": "/data2/lyt/WSI-MIL-Resarch/outputs/camelyon16_uni/mean_pooling/seed_1",
+    "log": "/data2/lyt/WSI-MIL-Resarch/logs/mean_pooling/seed_1.log",
+    "started_at": "2026-11-25T08:14:32.801419+00:00",
+    "finished_at": "2026-11-25T08:21:41.934863+00:00"
+  },
+  {
+    "seed": 2,
+    "status": "completed",
+    "returncode": 0,
+    "output": "/data2/lyt/WSI-MIL-Resarch/outputs/camelyon16_uni/mean_pooling/seed_2",
+    "log": "/data2/lyt/WSI-MIL-Resarch/logs/mean_pooling/seed_2.log",
+    "started_at": "2026-11-25T08:21:41.948845+00:00",
+    "finished_at": "2026-11-25T08:36:23.455233+00:00"
+  }
+]
