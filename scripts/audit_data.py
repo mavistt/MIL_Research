@@ -71,7 +71,7 @@ def main() -> None:
         else:
             labels.append(int(label[0]))
         patch_counts.append(int(features.shape[0]))
-    report = args.project_root / "reports" / "data_audit.md"
+    report = args.project_root / "reports" / "project" / "data_audit.md"
     report.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "# CAMELYON16 data audit",
@@ -99,7 +99,7 @@ def main() -> None:
     report.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
     if overlap or duplicate_ids or any(missing.values()) or invalid:
-        raise SystemExit("Data audit failed; see reports/data_audit.md")
+        raise SystemExit("Data audit failed; see reports/project/data_audit.md")
 
 
 if __name__ == "__main__":

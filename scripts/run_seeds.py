@@ -26,7 +26,7 @@ def main() -> None:
     root = args.project_root.resolve()
     logs = root / "logs"
     logs.mkdir(parents=True, exist_ok=True)
-    status_path = root / "reports" / f"{args.experiment_name}_seeds_status.json"
+    status_path = root / "reports" / args.experiment_name / "seeds_status.json"
     status_path.parent.mkdir(parents=True, exist_ok=True)
     status: list[dict[str, object]] = []
     train_script = root / "scripts" / "train.py"

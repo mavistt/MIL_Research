@@ -1,11 +1,19 @@
 # 报告目录
 
-- `data_audit.md`：完整数据一致性和形状审计结果。
-- `environment.md`：Python、PyTorch、TorchMIL、CUDA 和 GPU 版本记录。
-- `smoke_test.md`：ABMIL 单步前向、反向和字段隔离验证结果。
-- `baseline_implementation.md`：各 baseline 的实现来源、损失和兼容性说明。
-- `abmil_ungated_summary.md/.csv`：标准 ABMIL 多 seed（含历史 seed1234）的测试集汇总。
-- `gated_abmil_summary.md/.csv`：Gated ABMIL 三个 seed 的测试集汇总。
-- `*_per_seed.csv`：每个实验的逐 seed 测试指标。
+报告也按实验和用途隔离，根目录只保留本说明：
 
-这里保存可长期查看的报告，不保存临时运行日志。
+```text
+reports/
+├── project/          数据审计、环境、smoke test 和通用 baseline 说明
+├── abmil/            历史单 seed 标准 ABMIL 说明
+├── abmil_ungated/    标准 ABMIL 多 seed 汇总和逐 seed 指标
+├── gated_abmil/      Gated ABMIL 汇总和逐 seed 指标
+├── mean_pooling/     后续实验预留
+├── clam_sb/          后续实验预留
+├── dsmil/            后续实验预留
+└── transmil/         后续实验预留
+```
+
+每个已运行实验目录包含 `per_seed.csv`、`summary.csv`、`summary.md`；后台调度完成状态保存在对应目录的 `seeds_status.json`。未运行的 baseline 目录只保留说明文件。
+
+这里保存可长期查看的报告，不保存临时运行日志；日志统一放在 `logs/<baseline>/`。

@@ -62,11 +62,11 @@ def main() -> None:
             }
         )
     summary = pd.DataFrame(summary_rows)
-    reports = root / "reports"
+    reports = root / "reports" / args.experiment_name
     reports.mkdir(parents=True, exist_ok=True)
-    per_seed_path = reports / f"{args.experiment_name}_per_seed.csv"
-    summary_path = reports / f"{args.experiment_name}_summary.csv"
-    markdown_path = reports / f"{args.experiment_name}_summary.md"
+    per_seed_path = reports / "per_seed.csv"
+    summary_path = reports / "summary.csv"
+    markdown_path = reports / "summary.md"
     per_seed.to_csv(per_seed_path, index=False)
     summary.to_csv(summary_path, index=False)
 

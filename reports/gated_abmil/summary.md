@@ -21,4 +21,4 @@
 | F1 | 0.920743 | 0.023130 | 3 |
 | Balanced Accuracy | 0.929124 | 0.018595 | 3 |
 
-逐 seed 完整指标见 `gated_abmil_per_seed.csv`。
+逐 seed 完整指标见本目录的 `per_seed.csv`。

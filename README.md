@@ -82,7 +82,7 @@ python scripts/audit_data.py --project-root .
 python scripts/make_splits.py --project-root .
 ```
 
-审计会检查官方 train/test 划分、重复或重叠的 WSI ID、特征与标签对应关系、特征维度（应为 1024）、有限值、坐标形状、实例标签长度、切片标签和 patch 数量统计，并写入 `reports/data_audit.md`。
+审计会检查官方 train/test 划分、重复或重叠的 WSI ID、特征与标签对应关系、特征维度（应为 1024）、有限值、坐标形状、实例标签长度、切片标签和 patch 数量统计，并写入 `reports/project/data_audit.md`。
 
 训练使用官方训练分区中的分层 80/20 train/validation 划分，随机种子为 1234；官方 test 分区保持不变，不用于早停、模型选择或阈值优化。
 
@@ -111,7 +111,7 @@ python scripts/summarize_results.py --project-root . --experiment-name abmil_ung
 
 每个 seed 的结果位于 `outputs/camelyon16_uni/<实验名>/seed_<seed>/`，对应日志位于 `logs/`。`run_seeds.py` 按 seed 串行运行，支持跳过已完成的 seed；汇总脚本会输出每个 seed、均值、样本标准差和有效样本数。
 
-当前已实现并保持统一训练接口的模型包括：Mean Pooling、标准 ABMIL、Gated ABMIL、CLAM-SB、DSMIL 和 TransMIL。CLAM-SB、DSMIL、TransMIL 使用 TorchMIL 1.0.2 的官方实现；实现细节见 `reports/baseline_implementation.md`。
+当前已实现并保持统一训练接口的模型包括：Mean Pooling、标准 ABMIL、Gated ABMIL、CLAM-SB、DSMIL 和 TransMIL。CLAM-SB、DSMIL、TransMIL 使用 TorchMIL 1.0.2 的官方实现；实现细节见 `reports/project/baseline_implementation.md`。
 
 基线输出包括：
 
