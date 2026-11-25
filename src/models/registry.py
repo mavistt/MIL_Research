@@ -24,37 +24,34 @@ def build_model(config: dict[str, Any]) -> nn.Module:
 
         return MeanPoolingMIL(input_dim, dropout)
     if name in {"clam", "clam_sb"}:
-        from .clam_sb import TorchMILCLAMSB
+        from .clam_sb import OfficialCLAMSB
 
-        return TorchMILCLAMSB(
+        return OfficialCLAMSB(
             input_dim=input_dim,
-            att_dim=att_dim,
+            model_size=str(model_cfg.get("model_size", "small")),
             k_sample=int(model_cfg.get("k_sample", 8)),
-            gated=bool(model_cfg.get("gated", False)),
-            inst_loss_name=str(model_cfg.get("inst_loss_name", "SmoothTop1SVM")),
+            gated=bool(model_cfg.get("gated", True)),
+            dropout=dropout,
+            n_classes=int(model_cfg.get("n_classes", 2)),
+            subtyping=bool(model_cfg.get("subtyping", False)),
+            bag_weight=float(model_cfg.get("bag_weight", 0.7)),
         )
     if name == "dsmil":
-        from .dsmil import TorchMILDSMIL
+        from .dsmil import OfficialDSMIL
 
-        return TorchMILDSMIL(
+        return OfficialDSMIL(
             input_dim=input_dim,
-            att_dim=att_dim,
-            nonlinear_q=bool(model_cfg.get("nonlinear_q", False)),
-            nonlinear_v=bool(model_cfg.get("nonlinear_v", False)),
-            dropout=dropout,
+            output_class=int(model_cfg.get("output_class", 1)),
+            dropout_node=float(model_cfg.get("dropout_node", 0.0)),
+            nonlinear=bool(model_cfg.get("nonlinear", True)),
+            passing_v=bool(model_cfg.get("passing_v", False)),
         )
     if name == "transmil":
-        from .transmil import TorchMILTransMIL
+        from .transmil import OfficialTransMIL
 
-        return TorchMILTransMIL(
+        return OfficialTransMIL(
             input_dim=input_dim,
-            att_dim=att_dim,
-            n_layers=int(model_cfg.get("n_layers", 2)),
-            n_heads=int(model_cfg.get("n_heads", 4)),
-            n_landmarks=model_cfg.get("n_landmarks"),
-            pinv_iterations=int(model_cfg.get("pinv_iterations", 6)),
-            dropout=dropout,
-            use_mlp=bool(model_cfg.get("use_mlp", False)),
+            n_classes=int(model_cfg.get("n_classes", 2)),
         )
     raise ValueError(f"Unsupported model={name}; expected abmil, mean_pooling, clam_sb, dsmil or transmil")
 

@@ -111,7 +111,7 @@ python scripts/summarize_results.py --project-root . --experiment-name abmil_ung
 
 每个 seed 的结果位于 `outputs/camelyon16_uni/<实验名>/seed_<seed>/`，对应日志位于 `logs/`。`run_seeds.py` 按 seed 串行运行，支持跳过已完成的 seed；汇总脚本会输出每个 seed、均值、样本标准差和有效样本数。
 
-当前已实现并保持统一训练接口的模型包括：Mean Pooling、标准 ABMIL、Gated ABMIL、CLAM-SB、DSMIL 和 TransMIL。CLAM-SB、DSMIL、TransMIL 使用 TorchMIL 1.0.2 的官方实现；实现细节见 `reports/project/baseline_implementation.md`。
+当前已实现并保持统一训练接口的模型包括：Mean Pooling、标准 ABMIL、Gated ABMIL、CLAM-SB、DSMIL 和 TransMIL。CLAM-SB、DSMIL、TransMIL 使用各自作者 commit 的核心实现；ABMIL/Gated ABMIL 使用 TorchMIL 1.0.2 适配器。实现来源和严格 loss/optimizer 配置见 reports/project/official_implementation_audit.md。
 
 基线输出包括：
 
@@ -125,7 +125,7 @@ python scripts/summarize_results.py --project-root . --experiment-name abmil_ung
 
 ## 可扩展设计
 
-数据适配器、特征变换、MIL 聚合器、分类头和实验配置保持相对独立。新增模型只需实现统一的 `forward(x, mask)` 和 `compute_loss(y, x, mask)` 接口，并在 registry 中注册；不会改变固定 split 或特征文件。
+数据适配器、特征变换、MIL 聚合器、分类头和实验配置保持相对独立。新增模型只需实现统一的 forward(x, mask) 和 compute_training_loss(y, x, mask) 接口，并在 registry 中注册；不会改变固定 split 或特征文件。
 
 ## 版本控制约定
 

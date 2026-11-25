@@ -1,18 +1,22 @@
 model:
   name: dsmil
   input_dim: 1024
-  att_dim: 128
-  nonlinear_q: false
-  nonlinear_v: false
-  dropout: 0.0
+  output_class: 1
+  nonlinear: true
+  passing_v: false
+  dropout_node: 0.0
 training:
   batch_size: 1
-  epochs: 30
+  epochs: 50
   learning_rate: 0.0001
-  weight_decay: 0.0
+  weight_decay: 0.001
   optimizer: adam
-  early_stopping_patience: 8
-  selection_metric: auroc
+  betas: [0.5, 0.9]
+  scheduler: cosine
+  scheduler_eta_min: 0.000005
+  early_stopping: true
+  early_stopping_patience: 10
+  selection_metric: val_loss
   num_workers: 0
   device: auto
 reproducibility:

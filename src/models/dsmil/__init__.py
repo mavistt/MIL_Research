@@ -1,3 +1,5 @@
-from .model import TorchMILDSMIL
+from .model import OfficialDSMIL
 
-__all__ = ["TorchMILDSMIL"]
+TorchMILDSMIL = OfficialDSMIL
+
+__all__ = ["OfficialDSMIL", "TorchMILDSMIL"]

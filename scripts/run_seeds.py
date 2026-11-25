@@ -24,7 +24,7 @@ def main() -> None:
     args = parser.parse_args()
 
     root = args.project_root.resolve()
-    logs = root / "logs"
+    logs = root / "logs" / args.experiment_name
     logs.mkdir(parents=True, exist_ok=True)
     status_path = root / "reports" / args.experiment_name / "seeds_status.json"
     status_path.parent.mkdir(parents=True, exist_ok=True)
@@ -34,7 +34,7 @@ def main() -> None:
 
     for seed in args.seeds:
         output = root / "outputs" / "camelyon16_uni" / args.experiment_name / f"seed_{seed}"
-        log_path = logs / f"{args.experiment_name}_seed_{seed}.log"
+        log_path = logs / f"seed_{seed}.log"
         if args.skip_complete and _complete(output):
             record = {"seed": seed, "status": "skipped_complete", "output": str(output)}
             status.append(record)

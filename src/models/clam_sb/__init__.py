@@ -1,3 +1,5 @@
-from .model import TorchMILCLAMSB
+from .model import OfficialCLAMSB
 
-__all__ = ["TorchMILCLAMSB"]
+TorchMILCLAMSB = OfficialCLAMSB
+
+__all__ = ["OfficialCLAMSB", "TorchMILCLAMSB"]

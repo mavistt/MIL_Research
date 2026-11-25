@@ -2,6 +2,7 @@
 torch==2.3.0
 torchvision==0.18.0
 torchmil==1.0.2
+nystrom-attention==0.0.9
 tensordict==0.4.0
 einops>=0.8,<1
 pyvers>=0.2,<0.3

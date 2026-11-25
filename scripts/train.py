@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import copy
-import csv
 import json
 import shutil
 from pathlib import Path
@@ -31,22 +30,13 @@ def _forward_logits(model, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
 
 
 def _loss_and_logits(model, y: torch.Tensor, x: torch.Tensor, mask: torch.Tensor):
-    compute_loss = getattr(model, "compute_loss", None)
-    if compute_loss is None:
-        logits = _forward_logits(model, x, mask)
-        losses = {"bag_loss": torch.nn.functional.binary_cross_entropy_with_logits(logits, y.float())}
-        return logits, losses
-    logits, loss_terms = compute_loss(y=y, x=x, mask=mask)
-    if isinstance(loss_terms, torch.Tensor):
-        loss = loss_terms
-    elif isinstance(loss_terms, dict):
-        values = [value.reshape(()) for value in loss_terms.values() if isinstance(value, torch.Tensor)]
-        if not values:
-            raise TypeError("Model returned an empty loss dictionary")
-        loss = torch.stack(values).sum()
-    else:
-        raise TypeError(f"Model returned unsupported loss terms: {type(loss_terms)!r}")
-    return logits.reshape(-1), {"total_loss": loss}
+    compute_training_loss = getattr(model, "compute_training_loss", None)
+    if compute_training_loss is not None:
+        logits, loss, details = compute_training_loss(y=y, x=x, mask=mask)
+        return logits.reshape(-1), loss.reshape(()), details
+    logits = _forward_logits(model, x, mask)
+    loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, y.float())
+    return logits, loss, {"bag_loss": loss}
 
 
 def run_epoch(model, loader, optimizer, device, training: bool):
@@ -57,21 +47,62 @@ def run_epoch(model, loader, optimizer, device, training: bool):
         mask = batch["mask"].to(device)
         y = batch["Y"].float().to(device)
         with torch.set_grad_enabled(training):
-            if training:
-                logits, loss_terms = _loss_and_logits(model, y, x, mask)
-                loss = loss_terms["total_loss"]
-            else:
-                logits = _forward_logits(model, x, mask)
-                loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, y)
+            logits, loss, _ = _loss_and_logits(model, y, x, mask)
             if training:
                 optimizer.zero_grad(set_to_none=True)
                 loss.backward()
                 optimizer.step()
         losses.append(float(loss.detach().cpu()))
         ys.extend(y.detach().cpu().numpy().astype(int).tolist())
+        # For two-class CE adapters the scalar is logit_1-logit_0, whose
+        # sigmoid is exactly the softmax probability of class 1.
         ps.extend(torch.sigmoid(logits).detach().cpu().numpy().tolist())
         names.extend(batch["bag_name"])
     return float(np.mean(losses)), ys, ps, names
+
+
+def build_optimizer(model: torch.nn.Module, training_cfg: dict) -> torch.optim.Optimizer:
+    name = str(training_cfg.get("optimizer", "adam")).lower()
+    lr = float(training_cfg["learning_rate"])
+    weight_decay = float(training_cfg.get("weight_decay", 0.0))
+    betas = tuple(float(v) for v in training_cfg.get("betas", [0.9, 0.999]))
+    if name in {"adam", "adamw"}:
+        optimizer_cls = torch.optim.AdamW if name == "adamw" else torch.optim.Adam
+        return optimizer_cls(model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
+    if name == "radam":
+        from src.models.transmil.official_radam import RAdam
+
+        return RAdam(model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
+    if name in {"lookahead_radam", "lookahead-radam"}:
+        from src.models.transmil.official_lookahead import Lookahead
+        from src.models.transmil.official_radam import RAdam
+
+        base = RAdam(model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
+        return Lookahead(base, alpha=float(training_cfg.get("lookahead_alpha", 0.5)), k=int(training_cfg.get("lookahead_k", 6)))
+    raise ValueError(f"Unsupported optimizer={name!r}")
+
+
+def build_scheduler(optimizer, training_cfg: dict, epochs: int):
+    name = str(training_cfg.get("scheduler", "none")).lower()
+    if name in {"none", "", "null"}:
+        return None
+    if name == "cosine":
+        return torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=int(training_cfg.get("scheduler_t_max", epochs)),
+            eta_min=float(training_cfg.get("scheduler_eta_min", 0.0)),
+        )
+    raise ValueError(f"Unsupported scheduler={name!r}")
+
+
+def selection_score(val_loss: float, val_metrics: dict, metric: str) -> tuple[float, bool]:
+    metric = metric.lower()
+    if metric in {"val_loss", "loss"}:
+        return -val_loss, True
+    value = float(val_metrics.get(metric.replace("val_", ""), float("nan")))
+    if not np.isfinite(value):
+        value = float(val_metrics.get("auprc", float("nan")))
+    return value, False
 
 
 def main() -> None:
@@ -83,8 +114,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=None)
     args = parser.parse_args()
     root = args.project_root.resolve()
-    config = load_yaml(root / args.config)
-    config = copy.deepcopy(config)
+    config = copy.deepcopy(load_yaml(root / args.config))
     if args.seed is not None:
         config.setdefault("reproducibility", {})["training_seed"] = int(args.seed)
     seed = int(config["reproducibility"]["training_seed"])
@@ -99,40 +129,53 @@ def main() -> None:
     save_yaml(config, output / "config.yaml")
     shutil.copy2(root / "data/splits/seed1234.csv", output / "split_used.csv")
     split = pd.read_csv(root / "data/splits/seed1234.csv")
-    device_name = config["training"].get("device", "auto")
+    training_cfg = config["training"]
+    device_name = training_cfg.get("device", "auto")
     device = torch.device("cuda:0" if device_name == "auto" and torch.cuda.is_available() else "cpu") if device_name == "auto" else torch.device(device_name)
     model = build_model(config).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=float(config["training"]["learning_rate"]), weight_decay=float(config["training"]["weight_decay"]))
+    epochs = int(training_cfg["epochs"])
+    optimizer = build_optimizer(model, training_cfg)
+    scheduler = build_scheduler(optimizer, training_cfg, epochs)
     loaders = {}
     for partition in ("train", "val", "test"):
         names = split.loc[split["partition"] == partition, "bag_name"].tolist()
         dataset = Camelyon16Bags(root / "data/camelyon16", bag_names=names, fields=("X", "Y"))
         loaders[partition] = DataLoader(
             dataset,
-            batch_size=int(config["training"].get("batch_size", 1)),
+            batch_size=int(training_cfg.get("batch_size", 1)),
             shuffle=partition == "train",
             collate_fn=collate_bags,
-            num_workers=int(config["training"].get("num_workers", 0)),
+            num_workers=int(training_cfg.get("num_workers", 0)),
         )
     best = -float("inf")
+    best_epoch = 0
     patience = 0
     history = []
-    for epoch in range(1, int(config["training"]["epochs"]) + 1):
+    metric_name = str(training_cfg.get("selection_metric", "auroc"))
+    use_early_stopping = bool(training_cfg.get("early_stopping", True))
+    min_epoch = int(training_cfg.get("early_stopping_min_epoch", 1))
+    patience_limit = int(training_cfg.get("early_stopping_patience", 10))
+    for epoch in range(1, epochs + 1):
         train_loss, _, _, _ = run_epoch(model, loaders["train"], optimizer, device, True)
         val_loss, val_y, val_p, _ = run_epoch(model, loaders["val"], optimizer, device, False)
         val_metrics = compute_metrics(val_y, val_p)
-        score = val_metrics["auroc"] if np.isfinite(val_metrics["auroc"]) else val_metrics["auprc"]
-        history.append({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss, "val_auroc": val_metrics["auroc"], "val_auprc": val_metrics["auprc"]})
+        score, lower_is_better = selection_score(val_loss, val_metrics, metric_name)
+        improved = score > best
+        history.append({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss, "val_auroc": val_metrics["auroc"], "val_auprc": val_metrics["auprc"], "selection_score": score})
         print(history[-1], flush=True)
-        if score > best:
+        if improved:
             best = score
+            best_epoch = epoch
             patience = 0
-            torch.save({"model": model.state_dict(), "epoch": epoch, "val_metrics": val_metrics}, output / "checkpoint_best.pt")
-        else:
+            torch.save({"model": model.state_dict(), "epoch": epoch, "val_metrics": val_metrics, "selection_metric": metric_name, "selection_score": score}, output / "checkpoint_best.pt")
+        elif use_early_stopping and epoch >= min_epoch:
             patience += 1
-            if patience >= int(config["training"]["early_stopping_patience"]):
+            if patience >= patience_limit:
                 break
+        if scheduler is not None:
+            scheduler.step()
     pd.DataFrame(history).to_csv(output / "training_history.csv", index=False)
+    (output / "run_metadata.json").write_text(json.dumps({"device": str(device), "best_epoch": best_epoch, "selection_metric": metric_name, "official_loss_selection": lower_is_better}, indent=2), encoding="utf-8")
     checkpoint = torch.load(output / "checkpoint_best.pt", map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model"])
     for partition in ("val", "test"):
@@ -148,4 +191,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

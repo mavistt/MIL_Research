@@ -1,19 +1,23 @@
 model:
   name: clam_sb
   input_dim: 1024
-  att_dim: 128
-  gated: false
+  model_size: small
+  gated: true
   k_sample: 8
-  inst_loss_name: SmoothTop1SVM
-  dropout: 0.0
+  n_classes: 2
+  subtyping: false
+  bag_weight: 0.7
+  dropout: 0.25
 training:
   batch_size: 1
-  epochs: 30
+  epochs: 200
   learning_rate: 0.0001
-  weight_decay: 0.0
+  weight_decay: 0.00001
   optimizer: adam
-  early_stopping_patience: 8
-  selection_metric: auroc
+  betas: [0.9, 0.999]
+  early_stopping: false
+  early_stopping_patience: 10
+  selection_metric: val_loss
   num_workers: 0
   device: auto
 reproducibility:

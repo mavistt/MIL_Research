@@ -27,3 +27,22 @@ def sum_loss_terms(loss_terms: object) -> torch.Tensor:
     if not values:
         raise TypeError("TorchMIL returned no tensor loss terms")
     return torch.stack([value.reshape(()) for value in values]).sum()
+
+
+def unpad_single_bag(x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    """Return one variable-length bag without collate padding."""
+    if x.ndim != 3 or mask.ndim != 2 or x.shape[:2] != mask.shape:
+        raise ValueError(f"Expected X [B,N,D] and mask [B,N], got {tuple(x.shape)} and {tuple(mask.shape)}")
+    if x.shape[0] != 1:
+        raise ValueError("The official WSI implementations are adapted with batch_size=1")
+    valid = x[0][mask[0]]
+    if valid.shape[0] == 0:
+        raise ValueError("A bag must contain at least one valid instance")
+    return valid
+
+
+def two_class_positive_logit(logits: torch.Tensor) -> torch.Tensor:
+    """Convert official two-class logits to the scalar score used by metrics."""
+    if logits.ndim != 2 or logits.shape[1] != 2:
+        raise ValueError(f"Expected logits [B,2], got {tuple(logits.shape)}")
+    return (logits[:, 1] - logits[:, 0]).reshape(-1)

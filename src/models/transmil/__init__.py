@@ -1,3 +1,5 @@
-from .model import TorchMILTransMIL
+from .model import OfficialTransMIL
 
-__all__ = ["TorchMILTransMIL"]
+TorchMILTransMIL = OfficialTransMIL
+
+__all__ = ["OfficialTransMIL", "TorchMILTransMIL"]
