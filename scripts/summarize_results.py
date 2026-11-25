@@ -30,6 +30,7 @@ def main() -> None:
 
     metric_rows: list[dict[str, object]] = []
     experiment_root = root / "outputs" / "camelyon16_uni" / args.experiment_name
+    include_historical = args.experiment_name == "abmil_ungated" and not args.exclude_historical
     for output in sorted(experiment_root.glob("seed_*")):
         metrics_path = output / "metrics_test.json"
         if not metrics_path.exists():
@@ -38,14 +39,10 @@ def main() -> None:
             seed = int(output.name.split("_", 1)[1])
         except ValueError:
             continue
+        if args.experiment_name == "abmil_ungated" and seed == 1234 and args.exclude_historical:
+            continue
         metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
         metric_rows.append({"seed": seed, **{name: metrics.get(name, np.nan) for name in METRICS}})
-
-    include_historical = args.experiment_name == "abmil_ungated" and not args.exclude_historical
-    historical = root / "outputs" / "abmil_seed1234" / "metrics_test.json"
-    if include_historical and historical.exists():
-        metrics = json.loads(historical.read_text(encoding="utf-8"))
-        metric_rows.append({"seed": 1234, **{name: metrics.get(name, np.nan) for name in METRICS}})
 
     if not metric_rows:
         raise SystemExit(f"No completed metrics found under {experiment_root}")

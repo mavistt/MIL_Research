@@ -29,12 +29,12 @@
 
 ## 如何查看
 
-- `outputs/abmil_seed1234/metrics_test.json`：训练脚本生成的 test 指标。
-- `outputs/abmil_evaluated/metrics_test.json`：独立评估脚本重新生成的 test 指标。
-- `outputs/abmil_seed1234/training_history.csv`：每个 epoch 的训练和验证曲线数据。
-- `outputs/abmil_seed1234/predictions_test.csv`：每个 WSI 的标签、预测概率和预测类别。
-- `outputs/abmil_seed1234/roc_curve.png`：ROC 曲线。
-- `outputs/abmil_seed1234/pr_curve.png`：Precision-Recall 曲线。
-- `outputs/abmil_seed1234/confusion_matrix.png`：混淆矩阵图。
+- `outputs/camelyon16_uni/abmil_ungated/seed_1234/metrics_test.json`：历史训练脚本生成的 test 指标。
+- `outputs/camelyon16_uni/abmil_ungated/seed_1234/evaluated_recheck/`：如重新运行独立评估脚本，复核结果会放在这里。
+- `outputs/camelyon16_uni/abmil_ungated/seed_1234/training_history.csv`：每个 epoch 的训练和验证曲线数据。
+- `outputs/camelyon16_uni/abmil_ungated/seed_1234/predictions_test.csv`：每个 WSI 的标签、预测概率和预测类别。
+- `outputs/camelyon16_uni/abmil_ungated/seed_1234/roc_curve.png`：ROC 曲线。
+- `outputs/camelyon16_uni/abmil_ungated/seed_1234/pr_curve.png`：PR 曲线。
+- `outputs/camelyon16_uni/abmil_ungated/seed_1234/confusion_matrix.png`：混淆矩阵图。
 
 当前结果是单个随机种子的 baseline，不应直接视为最终稳定性能。后续应在相同划分上运行多个 seeds，并报告均值和标准差。

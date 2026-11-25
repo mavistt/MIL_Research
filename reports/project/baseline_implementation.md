@@ -23,4 +23,4 @@ The official TransMIL forward signature has no external mask argument and intern
 
 ## Experiment isolation
 
-`scripts/run_seeds.py` writes each run to `outputs/camelyon16_uni/<experiment>/seed_<seed>/` and each seed has an independent log in `logs/`. The historical `outputs/abmil_seed1234/` directory is not overwritten. `scripts/summarize_results.py` reports per-seed metrics, mean, sample standard deviation, and valid count; it ignores `outputs/abmil_evaluated/`.
+`scripts/run_seeds.py` writes each run to `outputs/camelyon16_uni/<experiment>/seed_<seed>/` and each seed has an independent log in `logs/`. The historical ABMIL seed 1234 is also stored under `outputs/camelyon16_uni/abmil_ungated/seed_1234/`; `scripts/summarize_results.py` can include or exclude it with `--exclude-historical`.

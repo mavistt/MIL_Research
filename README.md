@@ -92,12 +92,12 @@ python scripts/make_splits.py --project-root .
 python scripts/smoke_test.py --project-root .
 python scripts/train.py --project-root . --config configs/experiments/abmil.yaml
 python scripts/evaluate.py --project-root . --config configs/experiments/abmil.yaml \
-  --checkpoint outputs/abmil_seed1234/checkpoint_best.pt
+  --checkpoint outputs/camelyon16_uni/abmil_ungated/seed_1234/checkpoint_best.pt
 ```
 
 Smoke test 会加载一个 WSI、检查变长 bag 的 padding mask、执行 ABMIL 前向和反向传播，并确认训练路径不包含 `coords` 或 `y_inst`。初始训练使用 batch size 1、Adam、BCEWithLogitsLoss、验证集选最优检查点和早停。
 
-原始 `abmil_seed1234/` 历史结果保持不变。新的多 seed 实验使用独立目录和日志：
+历史 `seed_1234` 结果已归档到标准 ABMIL 目录。新的多 seed 实验使用独立目录和日志：
 
 ```bash
 nohup python scripts/run_seeds.py \

@@ -45,7 +45,7 @@ def main() -> None:
     if args.output_dir is not None:
         output = args.output_dir if args.output_dir.is_absolute() else root / args.output_dir
     else:
-        output = root / "outputs" / "abmil_evaluated"
+        output = root / "outputs" / "camelyon16_uni" / "abmil_ungated" / "seed_1234" / "evaluated_recheck"
     output.mkdir(parents=True, exist_ok=True)
     dump_metrics(compute_metrics(ys, ps), output / "metrics_test.json")
     pd.DataFrame({"wsi_id": ids, "label": ys, "probability": ps, "predicted_label": (pd.Series(ps) >= 0.5).astype(int), "checkpoint": str(args.checkpoint)}).to_csv(output / "predictions_test.csv", index=False)
